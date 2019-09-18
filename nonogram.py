@@ -3,33 +3,81 @@ from numpy import prod
 
 
 def filterRowsColumns(rows, columns):
-    for ci, cPoss in enumerate(columns):
-        if(len(cPoss) == 1):
-            # print(ci, cPoss)
-            for i, v in enumerate(rows):
-                # print(v)
-                # cpossi = cPoss[0][i]
-                # print(f" i = {i}   rPoss[0][{i}] = {cpossi}")
-                # print(list(filter(lambda x: x[i] == cPoss[0][i], v)))
-                rows[i] = list(filter(lambda x: x[i] == cPoss[0][i], v))
+    # Filter when only 1 possible row or column
+    oneRow, checkedOneRows = True, []
+    oneColumn, checkedOneColumns = True, []
+    while(oneRow or oneColumn):
+        oneRow, oneColumn = False, False
+        # Check Rows
+        for oRowIndex, oRow in enumerate(rows):
+            if(len(oRow) == 1 and oRowIndex not in checkedOneRows):
+                oneRow = True
+                checkedOneRows.append(oRowIndex)
+                for oneRowColIndex, oneRowColumns in enumerate(columns):
+                    columns[oneRowColIndex] = [c for c in oneRowColumns if c[oRowIndex] == oRow[0][oneRowColIndex]]
+        # Check Columns
+        for oColumnIndex, oColumn in enumerate(columns):
+            if(len(oColumn) == 1 and oColumnIndex not in checkedOneColumns):
+                oneColumn = True
+                checkedOneColumns.append(oColumnIndex)
+                for oneColumnRowIndex, oneColumnRows in enumerate(rows):
+                    rows[oneColumnRowIndex] = [r for r in oneColumnRows if r[oColumnIndex] == oColumn[0][oneColumnRowIndex]]
 
-    for ri, rPoss in enumerate(rows):
-        if(len(rPoss) == 1):
-            # print(ri, rPoss)
-            for i, v in enumerate(columns):
-                # print(v)
-                # rpossi = rPoss[0][i]
-                # print(f" i = {i}   rPoss[0][{i}] = {rpossi}")
-                # print(list(filter(lambda x: x[i] == rPoss[0][i], v)))
-                columns[i] = list(filter(lambda x: x[i] == rPoss[0][i], v))
+    # Updated rows/columns
+    print("""
+    ##########################
+    ##### 'One' ROW DATA #####
+    ##########################
+    """)
+    for i, row in enumerate(rows):
+        l = len(row)
+        print(f"{i}th Column ({l}) = {row}")
+    print("""
+    #############################
+    ##### 'One' COLUMN DATA #####
+    #############################
+    """)
+    for i, column in enumerate(columns):
+        l = len(column)
+        print(f"{i}th Column ({l}) = {column}")
+
+    # Filter overlapping rows or columns
+    overlapRow, checkedOverlapRows = True, []
+    overlapColumn, checkedOverlapColumns = True, []
+    while(overlapRow or overlapColumn):
+        overlapRow, overlapColumn = False, False
+        # Check rows
+        for ovRowIndex, ovRow in enumerate(rows):
+            overlapRowIndexes = []
+            for i in range(0, len(ovRow[0])):
+                if(all([int(ovr[i]) for ovr in ovRow])):
+                    overlapRowIndexes.append(i)
+            if(overlapRowIndexes and ovRowIndex not in checkedOverlapRows):
+                overlapRow = True
+                checkedOverlapRows.append(ovRowIndex)
+                for ovIndex in overlapRowIndexes:
+                    columns[ovIndex] = [c for c in columns[ovIndex] if int(c[ovRowIndex])]
+        # Check columns
+        for ovColIndex, ovCol in enumerate(columns):
+            overlapColIndexes = []
+            for i in range(0, len(ovCol[0])):
+                if(all([int(ovc[i]) for ovc in ovCol])):
+                    overlapColIndexes.append(i)
+            if(overlapColIndexes and ovColIndex not in checkedOverlapColumns):
+                overlapColumn = True
+                checkedOverlapColumns.append(ovColIndex)
+                for ovIndex in overlapColIndexes:
+                    rows[ovIndex] = [r for r in rows[ovIndex] if int(r[ovColIndex])]
+
     return rows, columns
 
 
 
 def solve(rows, columns, combos):
     tested = 0
+    ftested = None
     for p in product(*ROW_POSSIBILITIES):
-        print(f"Testing {tested}/{combos}", end="\r")
+        print(f"Testing {ftested}/{combos}", end="\r")
         found = True
         for i in range(0, len(p[0])):
             pColumns = "".join([r[i] for r in p])
@@ -37,6 +85,7 @@ def solve(rows, columns, combos):
                 found = False
                 break
         tested += 1
+        ftested = "{:,}".format(tested)
         if(found):
             print("\n")
             return p
@@ -97,8 +146,8 @@ def possibilities(values, length):
 
 if __name__ == "__main__":
     # Constant Grid Input
-    ROWS = [(0,), (4,), (6,), (2,2), (2,2), (6,), (4,), (2,), (2,), (2,), (0,)]
-    COLUMNS = [(0,), (9,), (9,), (2,2), (2,2), (4,), (4,), (0,)]
+    ROWS = [(11,2),(3,2,5,1),(13,),(1,3,7),(7,4,1),(11,2),(15,),(4,10),(3,2,5),(2,6),(1,7,3),(15,),(11,2),(10,),(11,1)]
+    COLUMNS = [(15,),(3,6,4),(9,5),(1,6,5),(7,5),(3,4,5),(1,7,5),(4,4,5),(8,5),(8,1,4),(10,2,1),(4,4,1),(2,6),(1,8,1),(2,9)]
 
     # Find all row possibilities
     print("""
@@ -122,16 +171,21 @@ if __name__ == "__main__":
         l = len(column)
         print(f"{i}th Column ({l}) = {column}")
 
-    # Filter Rows
-    # ROW_POSSIBILITIES, COLUMN_POSSIBILITIES = filterRowsColumns(rows=ROW_POSSIBILITIES, columns=COLUMN_POSSIBILITIES)
-
     # Solve
     print("""
     ####################
     ##### solution #####
     ####################
     """)
-    combos = prod([len(i) for i in ROW_POSSIBILITIES])
-    print(f"Possible Board Combinations = {combos}")
-    solution = solve(rows=ROW_POSSIBILITIES, columns=COLUMN_POSSIBILITIES, combos=combos)
+    allCombos = "{:,}".format(prod([len(i) for i in ROW_POSSIBILITIES]))
+    print(f"Total Board Combinations = {allCombos}")
+
+    # Filter Rows
+    ROW_POSSIBILITIES, COLUMN_POSSIBILITIES = filterRowsColumns(rows=ROW_POSSIBILITIES, columns=COLUMN_POSSIBILITIES)
+
+    filteredCombos = "{:,}".format(prod([len(i) for i in ROW_POSSIBILITIES]))
+    print(f"Filtered Board Combinations = {filteredCombos}")
+
+    # print("\n".join([r[0] for r in ROW_POSSIBILITIES]))
+    solution = solve(rows=ROW_POSSIBILITIES, columns=COLUMN_POSSIBILITIES, combos=filteredCombos)
     print("\n".join(solution))
